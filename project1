@@ -1,0 +1,47 @@
+import pandas as pd
+import numpy as np
+
+def run_analysis_pipeline():
+    # 1. Generate Structured Sample E-Commerce Dataset
+    np.random.seed(42)
+    n_records = 200
+    
+    raw_data = {
+        'Transaction_ID': [f'TXN{1000+i}' for i in range(n_records)],
+        'Date': pd.date_range(start='2025-01-01', periods=n_records, freq='D').strftime('%Y-%m-%d'),
+        'Product_Category': np.random.choice(['Electronics', 'Clothing', 'Home & Kitchen', 'Books'], n_records, p=[0.3, 0.4, 0.2, 0.1]),
+        'Units_Sold': np.random.randint(1, 10, n_records),
+        'Unit_Price': np.random.choice([15.0, 25.0, 50.0, 120.0, 299.0], n_records, p=[0.2, 0.3, 0.2, 0.2, 0.1]),
+        'Customer_Rating': np.random.choice([1, 2, 3, 4, 5], n_records, p=[0.05, 0.05, 0.2, 0.3, 0.4])
+    }
+    
+    df = pd.DataFrame(raw_data)
+    
+    # Introduce explicit anomalies for cleaning step simulation
+    df.loc[15, 'Customer_Rating'] = np.nan
+    df.loc[42, 'Units_Sold'] = np.nan
+    df = pd.concat([df, df.iloc[[10, 25]]], ignore_index=True) # Inject duplicates
+    
+    print(f"[1] Raw Initial Records: {len(df)}")
+    
+    # 2. Data Cleaning Pipeline
+    df.drop_duplicates(inplace=True)
+    df['Units_Sold'] = df['Units_Sold'].fillna(df['Units_Sold'].median())
+    df['Customer_Rating'] = df['Customer_Rating'].fillna(df['Customer_Rating'].mode()[0])
+    print(f"[2] Sanitized Records after Deduplication: {len(df)}")
+    
+    # Feature Engineering
+    df['Total_Revenue'] = df['Units_Sold'] * df['Unit_Price']
+    
+    # 3. Statistical Analysis Calculations
+    print("\n--- Summary Statistical Metrics ---")
+    print(f"Mean Revenue per Order:   ${df['Total_Revenue'].mean():.2f}")
+    print(f"Median Revenue per Order: ${df['Total_Revenue'].median():.2f}")
+    print(f"Standard Deviation:       ${df['Total_Revenue'].std():.2f}")
+    
+    print("\n--- Categorical Group Revenues ---")
+    category_summary = df.groupby('Product_Category')['Total_Revenue'].sum()
+    print(category_summary.to_string())
+
+if __name__ == "__main__":
+    run_analysis_pipeline()
